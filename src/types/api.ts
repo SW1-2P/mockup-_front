@@ -25,6 +25,41 @@ export interface Mockup {
   updatedAt: Date;
 }
 
+export enum ProjectType {
+  FLUTTER = 'flutter',
+  ANGULAR = 'angular'
+}
+
+export interface MobileAppConfig {
+  package_name?: string;
+  version?: string;
+  description?: string;
+  features?: string[];
+  theme?: string;
+}
+
+export interface MobileApp {
+  id: string;
+  nombre: string;
+  xml?: string;
+  prompt?: string;
+  mockup_id?: string;
+  project_type: ProjectType;
+  config?: MobileAppConfig;
+  user_id: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateMobileAppRequest {
+  nombre?: string;
+  xml?: string;
+  prompt?: string;
+  mockup_id?: string;
+  project_type?: ProjectType;
+  config?: MobileAppConfig;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;

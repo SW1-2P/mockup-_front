@@ -5,6 +5,9 @@ import {
   RegisterRequest,
   Diagrama,
   Mockup,
+  MobileApp,
+  CreateMobileAppRequest,
+  ProjectType,
 } from "../types/api";
 
 // Base API URL
@@ -292,6 +295,186 @@ export const mockupsApi = {
       await api.delete(`/mockups/${id}`);
     } catch (error) {
       console.error(`Delete mockup ${id} error:`, error);
+      throw error;
+    }
+  },
+};
+
+// Mobile Apps API
+export const mobileAppsApi = {
+  // Get all mobile apps
+  getAll: async (): Promise<MobileApp[]> => {
+    try {
+      const response = await api.get<MobileApp[]>("/mobile-generator");
+      return response.data;
+    } catch (error) {
+      console.error("Get mobile apps error:", error);
+      throw error;
+    }
+  },
+
+  // Get mobile app by ID
+  getById: async (id: string): Promise<MobileApp> => {
+    try {
+      const response = await api.get<MobileApp>(`/mobile-generator/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Get mobile app ${id} error:`, error);
+      throw error;
+    }
+  },
+
+  // Create new mobile app
+  create: async (mobileApp: CreateMobileAppRequest): Promise<MobileApp> => {
+    try {
+      // Get current user from localStorage
+      const user = authApi.getCurrentUser();
+
+      if (!user || !user.id) {
+        throw new Error("User not authenticated or user ID not available");
+      }
+
+      // Add user_id to the mobile app data
+      const mobileAppWithUserId = {
+        ...mobileApp,
+        user_id: user.id,
+      };
+
+      const response = await api.post<MobileApp>(
+        "/mobile-generator",
+        mobileAppWithUserId
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Create mobile app error:", error);
+      throw error;
+    }
+  },
+
+  // Create mobile app from XML
+  createFromXml: async (xml: string, projectType: ProjectType = ProjectType.FLUTTER): Promise<MobileApp> => {
+    try {
+      const user = authApi.getCurrentUser();
+
+      if (!user || !user.id) {
+        throw new Error("User not authenticated or user ID not available");
+      }
+
+      const mobileAppData: CreateMobileAppRequest = {
+        xml,
+        project_type: projectType,
+      };
+
+      const response = await api.post<MobileApp>(
+        "/mobile-generator",
+        mobileAppData
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Create mobile app from XML error:", error);
+      throw error;
+    }
+  },
+
+  // Create mobile app from mockup
+  createFromMockup: async (mockupId: string, projectType: ProjectType = ProjectType.FLUTTER): Promise<MobileApp> => {
+    try {
+      const user = authApi.getCurrentUser();
+
+      if (!user || !user.id) {
+        throw new Error("User not authenticated or user ID not available");
+      }
+
+      const mobileAppData: CreateMobileAppRequest = {
+        mockup_id: mockupId,
+        project_type: projectType,
+      };
+
+      const response = await api.post<MobileApp>(
+        "/mobile-generator",
+        mobileAppData
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Create mobile app from mockup error:", error);
+      throw error;
+    }
+  },
+
+  // Generate Flutter project
+  generateFlutter: async (id: string): Promise<Blob> => {
+    try {
+      const response = await api.post(`/mobile-generator/${id}/generate-flutter`, {}, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error generating Flutter project ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Generate project (Flutter or Angular)
+  generateProject: async (id: string): Promise<Blob> => {
+    try {
+      const response = await api.post(`/mobile-generator/${id}/generate`, {}, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error generating project ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Generate Flutter project from XML directly
+  generateFlutterFromXml: async (xml: string): Promise<Blob> => {
+    try {
+      // First create mobile app from XML
+      const mobileApp = await mobileAppsApi.createFromXml(xml, ProjectType.FLUTTER);
+      
+      // Then generate the project
+      return await mobileAppsApi.generateFlutter(mobileApp.id);
+    } catch (error) {
+      console.error('Error generating Flutter from XML:', error);
+      throw error;
+    }
+  },
+
+  // Generate Angular project from XML directly
+  generateAngularFromXml: async (xml: string): Promise<Blob> => {
+    try {
+      // First create mobile app from XML
+      const mobileApp = await mobileAppsApi.createFromXml(xml, ProjectType.ANGULAR);
+      
+      // Then generate the project
+      return await mobileAppsApi.generateProject(mobileApp.id);
+    } catch (error) {
+      console.error('Error generating Angular from XML:', error);
+      throw error;
+    }
+  },
+
+  // Update mobile app
+  update: async (
+    id: string,
+    data: Partial<CreateMobileAppRequest>
+  ): Promise<MobileApp> => {
+    try {
+      const response = await api.patch<MobileApp>(`/mobile-generator/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error(`Update mobile app ${id} error:`, error);
+      throw error;
+    }
+  },
+
+  // Delete mobile app
+  delete: async (id: string): Promise<void> => {
+    try {
+      await api.delete(`/mobile-generator/${id}`);
+    } catch (error) {
+      console.error(`Delete mobile app ${id} error:`, error);
       throw error;
     }
   },
