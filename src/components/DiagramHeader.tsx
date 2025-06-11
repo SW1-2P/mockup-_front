@@ -12,7 +12,6 @@ import {
   Upload,
   LogOut,
   Home,
-  Layers,
   Smartphone,
   Globe
 } from 'lucide-react';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FolderPlus, File, Upload, Clock, Plus, ListTodo, Layers } from 'lucide-react';
+import { FolderPlus, File, Upload, Clock, Plus, ListTodo, Layers, Bot, Smartphone } from 'lucide-react';
 import { authApi, diagramasApi, mockupsApi } from '../services/apiService';
 import { Diagrama, Mockup, User } from '../types/api';
 import { UserProfile } from './UserProfile';
@@ -47,6 +47,16 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   // Función para abrir un mockup específico
   const handleOpenMockup = (mockupId: string) => {
     navigate(`/edit/mockup/${mockupId}`);
+  };
+
+  // Función para navegar a crear app con IA
+  const handleCreateAppWithAI = () => {
+    navigate('/mobile-app-from-prompt');
+  };
+
+  // Función para gestionar apps móviles existentes
+  const handleManageMobileApps = () => {
+    navigate('/mobile-apps');
   };
 
   useEffect(() => {
@@ -130,7 +140,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </div>
 
         {/* Quick action buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <button
             onClick={handleCreateNew}
             className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow flex items-center gap-4"
@@ -198,6 +208,32 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               onChange={onFileImport}
             />
           </label>
+
+          <button
+            onClick={handleCreateAppWithAI}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow flex items-center gap-4"
+          >
+            <div className="h-10 w-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
+              <Bot size={24} />
+            </div>
+            <div className="text-left">
+              <h3 className="font-semibold text-gray-800">App con IA</h3>
+              <p className="text-sm text-gray-500">Crear desde descripción de texto</p>
+            </div>
+          </button>
+
+          <button
+            onClick={handleManageMobileApps}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow flex items-center gap-4"
+          >
+            <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600">
+              <Smartphone size={24} />
+            </div>
+            <div className="text-left">
+              <h3 className="font-semibold text-gray-800">Gestionar Apps</h3>
+              <p className="text-sm text-gray-500">Ver y administrar apps creadas</p>
+            </div>
+          </button>
         </div>
 
         {/* Recent items */}
