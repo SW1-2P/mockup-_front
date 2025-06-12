@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Smartphone, Globe, Download, Trash2, Edit, Plus } from 'lucide-react';
+import { Smartphone, Globe, Download, Trash2, Plus } from 'lucide-react';
 import { MobileApp, ProjectType, CreateMobileAppRequest } from '../types/api';
 import { mobileAppsApi } from '../services/apiService';
 

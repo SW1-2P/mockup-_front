@@ -7,6 +7,8 @@ import {
   Mockup,
   MobileApp,
   CreateMobileAppRequest,
+  CreateFromPromptRequest,
+  CreateFromPromptResponse,
   ProjectType,
 } from "../types/api";
 
@@ -347,6 +349,49 @@ export const mobileAppsApi = {
       return response.data;
     } catch (error) {
       console.error("Create mobile app error:", error);
+      throw error;
+    }
+  },
+
+  // Create mobile app from prompt (NUEVO)
+  createFromPrompt: async (request: CreateFromPromptRequest): Promise<CreateFromPromptResponse> => {
+    try {
+      // Get current user from localStorage
+      const user = authApi.getCurrentUser();
+
+      if (!user || !user.id) {
+        throw new Error("User not authenticated or user ID not available");
+      }
+
+      // Preparar request data según especificación
+      const requestData = {
+        prompt: request.prompt,
+        nombre: request.nombre,
+        project_type: request.project_type || ProjectType.FLUTTER,
+        config: request.config,
+      };
+
+      // Log detallado para debugging
+      console.log('=== DEBUG createFromPrompt ===');
+      console.log('Request data:', requestData);
+      console.log('API URL:', `${API_URL}/mobile-generator/from-prompt`);
+      console.log('Token:', localStorage.getItem('token') ? 'EXISTS' : 'MISSING');
+      console.log('User:', user);
+
+      const response = await api.post<CreateFromPromptResponse>(
+        "/mobile-generator/from-prompt",
+        requestData
+      );
+      
+      console.log('Response success:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("=== ERROR createFromPrompt ===");
+      console.error("Error:", error);
+      console.error("Error response data:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      console.error("Error headers:", error.response?.headers);
+      console.error("Request config:", error.config);
       throw error;
     }
   },

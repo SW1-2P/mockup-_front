@@ -60,6 +60,52 @@ export interface CreateMobileAppRequest {
   config?: MobileAppConfig;
 }
 
+/**
+ * Request para crear aplicación desde prompt (NUEVO)
+ */
+export interface CreateFromPromptRequest {
+  /** Descripción de la aplicación (requerido) */
+  prompt: string;
+  
+  /** Nombre de la aplicación (opcional - se genera automáticamente) */
+  nombre?: string;
+  
+  /** Tipo de proyecto (opcional - default: flutter) */
+  project_type?: ProjectType;
+  
+  /** Configuración adicional (opcional) */
+  config?: MobileAppConfig;
+}
+
+/**
+ * Response de creación desde prompt (NUEVO)
+ */
+export interface CreateFromPromptResponse {
+  /** UUID de la aplicación creada */
+  id: string;
+  
+  /** Nombre de la aplicación */
+  nombre: string;
+  
+  /** Prompt ENRIQUECIDO automáticamente por la IA */
+  prompt: string;
+  
+  /** Tipo de proyecto */
+  project_type: ProjectType;
+  
+  /** Configuración del proyecto */
+  config?: MobileAppConfig;
+  
+  /** ID del usuario propietario */
+  user_id: string;
+  
+  /** Fecha de creación */
+  createdAt: string;
+  
+  /** Fecha de última actualización */
+  updatedAt: string;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
