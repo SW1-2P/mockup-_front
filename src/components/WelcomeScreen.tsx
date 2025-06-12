@@ -59,6 +59,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     navigate('/mobile-apps');
   };
 
+  // Función para crear app desde imagen
+  const handleCreateAppFromImage = () => {
+    navigate('/mobile-app-from-image');
+  };
+
   useEffect(() => {
     // Get current user
     try {
@@ -232,6 +237,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <div className="text-left">
               <h3 className="font-semibold text-gray-800">Gestionar Apps</h3>
               <p className="text-sm text-gray-500">Ver y administrar apps creadas</p>
+            </div>
+          </button>
+
+          <button
+            onClick={handleCreateAppFromImage}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow flex items-center gap-4"
+          >
+            <div className="h-10 w-10 bg-pink-100 rounded-full flex items-center justify-center text-pink-600">
+              <Upload size={24} />
+            </div>
+            <div className="text-left">
+              <h3 className="font-semibold text-gray-800">App desde Imagen</h3>
+              <p className="text-sm text-gray-500">Generar app desde mockup o diseño</p>
             </div>
           </button>
         </div>
