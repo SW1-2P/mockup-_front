@@ -1,5 +1,3 @@
-import OpenAI from "openai";
-
 interface ImageAnalysisResponse {
   success: boolean;
   description?: string;
