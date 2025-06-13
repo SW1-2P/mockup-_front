@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Upload, Image, Loader, Check, AlertCircle, Eye, Download } from 'lucide-react';
 import { 
-  analyzeImageAndGenerateProject, 
   fileToBase64, 
   validateImageFile,
-  getImageInfo,
-  type ProjectGenerationResponse 
+  getImageInfo
 } from '../services/imageAnalysisService';
+import { mobileAppsApi } from '../services/apiService';
 
 interface FormData {
   projectName: string;
@@ -14,6 +15,7 @@ interface FormData {
 }
 
 const MobileAppFromImagePage: React.FC = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
     projectName: '',
     projectType: 'flutter',
@@ -125,41 +127,56 @@ const MobileAppFromImagePage: React.FC = () => {
     try {
       const base64Image = await fileToBase64(formData.imageFile, true);
       
-      const result: ProjectGenerationResponse = await analyzeImageAndGenerateProject(
-        base64Image,
-        formData.projectType,
-        formData.projectName
-      );
+      // Usar el nuevo endpoint del APARTADO DESDE IMAGEN
+      const result = await mobileAppsApi.createFromImageApp({
+        image: base64Image,
+        nombre: formData.projectName,
+        projectType: formData.projectType
+      });
 
-      if (result.success && result.downloadUrl) {
-        // Descargar archivo automáticamente
-        const link = document.createElement('a');
-        link.href = result.downloadUrl;
-        link.download = `${formData.projectName}-${formData.projectType}.zip`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      if (result.success && result.app) {
+        setSuccess(`¡App "${result.app.nombre}" creada desde imagen! Generando proyecto...`);
         
-        // Limpiar URL del blob
-        URL.revokeObjectURL(result.downloadUrl);
-        
-        setSuccess(`¡Proyecto ${formData.projectType} generado y descargado correctamente!`);
-        
-        // Limpiar formulario
-        setFormData({
-          projectName: '',
-          projectType: 'flutter',
-          imageFile: null
-        });
-        setImagePreview('');
-        setImageInfo(null);
-        setAnalysisResult('');
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
+        // Auto-generar el proyecto
+        setTimeout(async () => {
+          try {
+            const blob = await mobileAppsApi.generateProject(result.app.id);
+            
+            // Descargar archivo automáticamente
+            const link = document.createElement('a');
+            const url = window.URL.createObjectURL(blob);
+            link.href = url;
+            link.download = `${result.app.nombre}-${formData.projectType}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Limpiar URL del blob
+            URL.revokeObjectURL(url);
+            
+            setSuccess(`¡Proyecto ${formData.projectType} generado y descargado correctamente!`);
+            
+            // Limpiar formulario
+            setFormData({
+              projectName: '',
+              projectType: 'flutter',
+              imageFile: null
+            });
+            setImagePreview('');
+            setImageInfo(null);
+            setAnalysisResult('');
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+            
+          } catch (genError) {
+            console.error('Error generando proyecto:', genError);
+            setError('Error generando el proyecto. Puedes intentar descargarlo desde "Mis Apps".');
+          }
+        }, 2000);
         
       } else {
-        setError(result.error || 'Error generando proyecto');
+        setError(result.error || 'Error creando app desde imagen');
       }
       
     } catch (err) {
@@ -185,201 +202,314 @@ const MobileAppFromImagePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Generar App desde Imagen
-          </h1>
-          <p className="text-lg text-gray-600">
-            Sube una imagen de mockup o diseño y genera automáticamente una aplicación Flutter o Angular
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <button
+              onClick={() => navigate('/mobile-apps-main')}
+              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Volver
+            </button>
+            <h1 className="text-xl font-bold text-gray-900 flex items-center">
+              <Image className="w-6 h-6 mr-2 text-blue-600" />
+              APARTADO 3: DESDE IMAGEN
+            </h1>
+            <div className="w-16"></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Hero */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+            <Image className="w-8 h-8 text-blue-600" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Crea tu App desde Mockups
+          </h2>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            Sube tus mockups, wireframes o capturas de pantalla y nuestra IA analizará cada componente 
+            para generar una aplicación fiel a tu diseño original.
           </p>
         </div>
 
-        {/* Formulario Principal */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Configuración del Proyecto */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Configuración del Proyecto</h3>
-              
-              <div>
-                <label htmlFor="projectName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre del Proyecto
-                </label>
-                <input
-                  type="text"
-                  id="projectName"
-                  name="projectName"
-                  value={formData.projectName}
-                  onChange={handleInputChange}
-                  placeholder="mi-app-increible"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="projectType" className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipo de Proyecto
-                </label>
-                <select
-                  id="projectType"
-                  name="projectType"
-                  value={formData.projectType}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="flutter">Flutter</option>
-                  <option value="angular">Angular</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Subida de Imagen */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Imagen del Diseño</h3>
-              
-              <div>
-                <label htmlFor="imageFile" className="block text-sm font-medium text-gray-700 mb-1">
-                  Seleccionar Imagen
-                </label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  id="imageFile"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  disabled={isCompressing}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Formatos soportados: JPEG, PNG, GIF, WebP (máx. 20MB - se comprimirá automáticamente)
-                </p>
-              </div>
-
-              {isCompressing && (
-                <div className="flex items-center gap-2 text-blue-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  <span className="text-sm">Comprimiendo imagen...</span>
-                </div>
-              )}
-
-              {imageInfo && (
-                <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
-                  📊 Imagen procesada: {imageInfo.sizeKB} KB ({imageInfo.format.toUpperCase()})
-                </div>
-              )}
-
-              {imagePreview && (
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-48 object-contain border border-gray-200 rounded-md"
-                  />
-                  <button
-                    onClick={clearImage}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Botones de Acción */}
-          <div className="mt-6 flex flex-wrap gap-4">
-            <button
-              onClick={handleAnalyzeImage}
-              disabled={!formData.imageFile || isAnalyzing || isCompressing}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isAnalyzing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Analizando...
-                </>
-              ) : (
-                'Analizar Imagen'
-              )}
-            </button>
-
-            <button
-              onClick={handleGenerateProject}
-              disabled={!formData.imageFile || !formData.projectName.trim() || isGenerating || isCompressing}
-              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Generando Proyecto...
-                </>
-              ) : (
-                `Generar Proyecto ${formData.projectType}`
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Mensajes de Estado */}
+        {/* Status Messages */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-800">{error}</p>
-              </div>
-            </div>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start max-w-4xl mx-auto">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
+            <div className="text-red-700">{error}</div>
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-green-800">{success}</p>
-              </div>
-            </div>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-start max-w-4xl mx-auto">
+            <Check className="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+            <div className="text-green-700">{success}</div>
           </div>
         )}
 
-        {/* Resultado del Análisis */}
-        {analysisResult && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Análisis de la Imagen</h3>
-            <div className="bg-gray-50 rounded-md p-4">
-              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
-                {analysisResult}
-              </pre>
-            </div>
-            <p className="text-sm text-gray-600 mt-2">
-              Si el análisis se ve correcto, puedes proceder a generar el proyecto.
-            </p>
-          </div>
-        )}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Column - Upload and Form */}
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">
+              📁 Configuración del Proyecto
+            </h3>
 
-        {/* Información Adicional */}
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mt-6">
-          <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Consejos para mejores resultados:</h4>
-          <ul className="text-sm text-blue-700 space-y-1">
-            <li>• Usa imágenes claras y de alta resolución</li>
-            <li>• Asegúrate de que todos los elementos UI sean visibles</li>
-            <li>• Incluye mockups de múltiples pantallas si es posible</li>
-            <li>• Los textos en la imagen deben ser legibles</li>
-            <li>• Las imágenes se comprimen automáticamente para optimizar el envío</li>
-            <li>• Evita imágenes muy complejas o con muchos elementos superpuestos</li>
-          </ul>
+            {/* Project Name */}
+            <div className="mb-6">
+              <label className="block text-lg font-semibold text-gray-900 mb-3">
+                📱 Nombre del Proyecto
+              </label>
+              <input
+                type="text"
+                name="projectName"
+                value={formData.projectName}
+                onChange={handleInputChange}
+                placeholder="Mi App Increíble"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+                required
+              />
+            </div>
+
+            {/* Project Type */}
+            <div className="mb-8">
+              <label className="block text-lg font-semibold text-gray-900 mb-3">
+                ⚙️ Tipo de Tecnología
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, projectType: 'flutter' }))}
+                  className={`p-4 border-2 rounded-xl transition-all ${
+                    formData.projectType === 'flutter'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-center">
+                    <div className="text-xl mb-2">📱</div>
+                    <div className="font-semibold">Flutter</div>
+                    <div className="text-sm text-gray-500">App Móvil</div>
+                  </div>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, projectType: 'angular' }))}
+                  className={`p-4 border-2 rounded-xl transition-all ${
+                    formData.projectType === 'angular'
+                      ? 'border-red-500 bg-red-50 text-red-700'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-center">
+                    <div className="text-xl mb-2">🌐</div>
+                    <div className="font-semibold">Angular</div>
+                    <div className="text-sm text-gray-500">App Web</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Image Upload */}
+            <div className="mb-8">
+              <label className="block text-lg font-semibold text-gray-900 mb-3">
+                🖼️ Subir Imagen de Mockup
+              </label>
+              
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+                
+                {!imagePreview ? (
+                  <div>
+                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-2">
+                      Arrastra tu imagen aquí o haz clic para seleccionar
+                    </p>
+                    <p className="text-sm text-gray-500 mb-4">
+                      JPG, PNG, GIF, WEBP - Máximo 10MB
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      disabled={isCompressing}
+                    >
+                      {isCompressing ? (
+                        <>
+                          <Loader className="animate-spin w-4 h-4 mr-2 inline" />
+                          Procesando...
+                        </>
+                      ) : (
+                        'Seleccionar Imagen'
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="max-w-full max-h-48 mx-auto rounded-lg shadow-md mb-4"
+                    />
+                    {imageInfo && (
+                      <p className="text-sm text-gray-600 mb-4">
+                        {imageInfo.sizeKB} KB • {imageInfo.format.toUpperCase()}
+                      </p>
+                    )}
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                      >
+                        Cambiar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearImage}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-4">
+              <button
+                onClick={handleAnalyzeImage}
+                disabled={!formData.imageFile || isAnalyzing}
+                className="w-full bg-blue-600 text-white font-semibold py-4 px-6 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader className="animate-spin w-5 h-5 mr-3" />
+                    Analizando imagen...
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-5 h-5 mr-3" />
+                    Analizar Imagen
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleGenerateProject}
+                disabled={!formData.imageFile || !formData.projectName.trim() || isGenerating}
+                className="w-full bg-green-600 text-white font-semibold py-4 px-6 rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader className="animate-spin w-5 h-5 mr-3" />
+                    Generando proyecto...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-5 h-5 mr-3" />
+                    Generar y Descargar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column - Analysis Result */}
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">
+              🔍 Análisis de la Imagen
+            </h3>
+
+            {!analysisResult ? (
+              <div className="text-center py-12">
+                <Image className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">
+                  Sube una imagen y presiona "Analizar Imagen" para ver los componentes detectados
+                </p>
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h4 className="font-semibold text-gray-800 mb-3">
+                  Componentes Detectados:
+                </h4>
+                <div className="whitespace-pre-wrap text-gray-700 text-sm leading-relaxed">
+                  {analysisResult}
+                </div>
+              </div>
+            )}
+
+            {/* Info Cards */}
+            <div className="grid grid-cols-2 gap-4 mt-8">
+              <div className="bg-blue-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-blue-600 mb-1">IA</div>
+                <div className="text-sm text-blue-700">Análisis Visual</div>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-purple-600 mb-1">100%</div>
+                <div className="text-sm text-purple-700">Fidelidad</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Supported Formats */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">
+            📋 Formatos y Fuentes Soportados
+          </h3>
+          <div className="grid md:grid-cols-4 gap-6">
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-2">Formatos de Imagen</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• JPG / JPEG</li>
+                <li>• PNG</li>
+                <li>• GIF</li>
+                <li>• WEBP</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-2">Herramientas de Diseño</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Figma</li>
+                <li>• Sketch</li>
+                <li>• Adobe XD</li>
+                <li>• Wireframes</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-2">Tipos de Mockup</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Prototipos Hi-Fi</li>
+                <li>• Wireframes</li>
+                <li>• Capturas de pantalla</li>
+                <li>• Bocetos digitales</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-2">Elementos Detectados</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Botones y formularios</li>
+                <li>• Navegación</li>
+                <li>• Layouts y grids</li>
+                <li>• Componentes UI</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </div>

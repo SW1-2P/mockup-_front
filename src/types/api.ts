@@ -78,7 +78,7 @@ export interface CreateFromPromptRequest {
 }
 
 /**
- * Response de creación desde prompt (NUEVO)
+ * Response de creación desde prompt (LEGACY)
  */
 export interface CreateFromPromptResponse {
   /** UUID de la aplicación creada */
@@ -104,6 +104,47 @@ export interface CreateFromPromptResponse {
   
   /** Fecha de última actualización */
   updatedAt: string;
+}
+
+/**
+ * Response de los nuevos apartados de creación de apps
+ */
+export interface CreateAppResponse {
+  /** Indica si la operación fue exitosa */
+  success: boolean;
+  
+  /** Tipo de apartado usado */
+  type: 'general_automatic' | 'detailed_from_prompt' | 'from_image_analysis';
+  
+  /** Datos de la aplicación creada */
+  app: MobileApp;
+  
+  /** Prompt enriquecido (solo APARTADO GENERAL) */
+  enrichedPrompt?: string;
+  
+  /** Dominio detectado (solo APARTADO GENERAL) */
+  detectedDomain?: string;
+  
+  /** Prompt original (solo APARTADO DETALLADO) */
+  originalPrompt?: string;
+  
+  /** Funcionalidades especificadas (solo APARTADO DETALLADO) */
+  specifiedFeatures?: string[];
+  
+  /** Análisis de imagen (solo APARTADO DESDE IMAGEN) */
+  imageAnalysis?: string;
+  
+  /** Componentes detectados (solo APARTADO DESDE IMAGEN) */
+  detectedComponents?: string[];
+  
+  /** Total de páginas generadas */
+  totalPages?: number;
+  
+  /** Mensaje descriptivo */
+  message?: string;
+  
+  /** Error en caso de fallo */
+  error?: string;
 }
 
 export interface LoginRequest {

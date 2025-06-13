@@ -4,4 +4,6 @@ export { TodoPage } from './TodoPage';
 export { NewMockupPage } from './NewMockupPage';
 export { MobileAppFromPromptPage } from './MobileAppFromPromptPage';
 export { MobileAppsPage } from './MobileAppsPage';
-export { default as MobileAppFromImagePage } from './MobileAppFromImagePage'; 
+export { default as MobileAppFromImagePage } from './MobileAppFromImagePage';
+export { MobileAppsMainPage } from './MobileAppsMainPage';
+export { MobileAppDetailedPage } from './MobileAppDetailedPage'; 
