@@ -1,7 +1,8 @@
 import { Route, Routes as RouterRoutes, Navigate, useNavigate } from 'react-router-dom';
 import { AuthPage } from '../components/AuthPage';
 import { WelcomeScreen } from '../components/WelcomeScreen';
-import { DiagramsPage, NewDiagramPage, TodoPage, NewMockupPage } from '../pages';
+import { DiagramsPage, NewDiagramPage, TodoPage, NewMockupPage, MobileAppsPage, MobileAppFromImagePage } from '../pages';
+import { MobileAppFromPromptPage } from '../pages/MobileAppFromPromptPage';
 import { useCallback } from 'react';
 import { authApi } from '../services/apiService';
 import { DiagramListPage } from '../pages/DiagramListPage';
@@ -92,6 +93,24 @@ export const Routes = () => {
       <Route path="/new-mockup" element={
         <ProtectedRoute>
           <NewMockupPage />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/mobile-app-from-prompt" element={
+        <ProtectedRoute>
+          <MobileAppFromPromptPage />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/mobile-apps" element={
+        <ProtectedRoute>
+          <MobileAppsPage />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/mobile-app-from-image" element={
+        <ProtectedRoute>
+          <MobileAppFromImagePage />
         </ProtectedRoute>
       } />
       

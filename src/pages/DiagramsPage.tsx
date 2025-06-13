@@ -9,18 +9,21 @@ import { DiagramHeader } from '../components/DiagramHeader';
 import { DiagramManager } from '../components/DiagramManager';
 import { FileSelector } from '../components/FileSelector';
 import { ImageMockupConverter } from '../components/ImageMockupConverter';
+import { MobileAppManager } from '../components/MobileAppManager';
 import { MockupSaveDialog } from '../components/MockupSaveDialog';
 import { SaveDialog } from '../components/SaveDialog';
 
 // Custom hooks and services
 import { useDiagramManager } from '../hooks/useDiagramManager';
-import { authApi, diagramasApi, mockupsApi } from '../services/apiService';
+import { authApi, diagramasApi, mockupsApi, mobileAppsApi } from '../services/apiService';
 
 export const DiagramsPage = () => {
   const navigate = useNavigate();
   const { type, id } = useParams<{ type?: string; id?: string }>();
   const drawioRef = useRef<DrawIoEmbedRef | null>(null);
   const [loadingAngular, setLoadingAngular] = useState(false);
+  const [loadingFlutter, setLoadingFlutter] = useState(false);
+  const [showMobileAppManager, setShowMobileAppManager] = useState(false);
 
   const {
     xmlContent,
@@ -136,18 +139,22 @@ export const DiagramsPage = () => {
     navigate('/');
   };
 
+  const handleToggleMobileAppManager = () => {
+    setShowMobileAppManager(!showMobileAppManager);
+  };
+
   // Función para generar código Angular
   const handleGenerateAngular = async () => {
     if (!xmlContent) {
-      setError('No hay contenido para generar código Angular');
+      setError('No hay contenido para generar aplicación Angular');
       return;
     }
 
     try {
       setLoadingAngular(true);
       
-      // Llamar al endpoint para generar el código Angular
-      const blob = await mockupsApi.generateAngular(xmlContent);
+      // Llamar al nuevo endpoint para generar la aplicación Angular
+      const blob = await mobileAppsApi.generateAngularFromXml(xmlContent);
       
       // Crear un objeto URL para el blob
       const url = window.URL.createObjectURL(blob);
@@ -167,10 +174,48 @@ export const DiagramsPage = () => {
       document.body.removeChild(a);
       
     } catch (error) {
-      console.error('Error generando código Angular:', error);
-      setError('Error al generar código Angular. Inténtelo de nuevo más tarde.');
+      console.error('Error generando aplicación Angular:', error);
+      setError('Error al generar aplicación Angular. Inténtelo de nuevo más tarde.');
     } finally {
       setLoadingAngular(false);
+    }
+  };
+
+  // Función para generar aplicación Flutter
+  const handleGenerateFlutter = async () => {
+    if (!xmlContent) {
+      setError('No hay contenido para generar aplicación Flutter');
+      return;
+    }
+
+    try {
+      setLoadingFlutter(true);
+      
+      // Llamar al endpoint para generar la aplicación Flutter
+      const blob = await mobileAppsApi.generateFlutterFromXml(xmlContent);
+      
+      // Crear un objeto URL para el blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Crear un elemento <a> temporal para descargar el archivo
+      const a = document.createElement('a');
+      a.href = url;
+      const fileName = currentFile ? currentFile.toString() : mockupFileName || 'flutter-project';
+      a.download = fileName.replace(/\.(drawio|xml)$/, '') + '-flutter.zip';
+      
+      // Agregar el elemento al DOM y hacer clic en él
+      document.body.appendChild(a);
+      a.click();
+      
+      // Limpiar después de la descarga
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+    } catch (error) {
+      console.error('Error generando aplicación Flutter:', error);
+      setError('Error al generar aplicación Flutter. Inténtelo de nuevo más tarde.');
+    } finally {
+      setLoadingFlutter(false);
     }
   };
 
@@ -201,12 +246,15 @@ export const DiagramsPage = () => {
           loadingExtract={loadingExtract}
           loadingMockup={loadingMockup}
           loadingAngular={loadingAngular}
+          loadingFlutter={loadingFlutter}
           onToggleFileSelector={handleToggleFileSelector}
           onToggleDiagramManager={handleToggleDiagramManager}
           onToggleImageConverter={handleToggleImageConverter}
+          onToggleMobileAppManager={handleToggleMobileAppManager}
           onExtractClasses={handleExtractClasses}
           onConvertToMockup={handleConvertToMockupWithRedirect}
           onGenerateAngular={type === 'mockup' ? handleGenerateAngular : undefined}
+          onGenerateFlutter={type === 'mockup' ? handleGenerateFlutter : undefined}
           onDownload={handleDownload}
           onExportXml={handleExportXml}
           onCreateNew={handleCreateNewDiagram}
@@ -262,6 +310,13 @@ export const DiagramsPage = () => {
         <ImageMockupConverter
           onMockupGenerated={handleImageMockupGenerated}
           onClose={() => setShowImageConverter(false)}
+        />
+      )}
+
+      {/* Mobile App Manager */}
+      {showMobileAppManager && (
+        <MobileAppManager
+          onClose={() => setShowMobileAppManager(false)}
         />
       )}
 
