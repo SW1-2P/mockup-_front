@@ -59,7 +59,7 @@ export const analyzeImageForProject = async (
   projectType: 'flutter' | 'angular' = 'flutter'
 ): Promise<ImageAnalysisResponse> => {
   try {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
     
     // Usar el endpoint del backend
     const response = await fetch(`${API_BASE_URL}/mobile-generator/analyze-image`, {
@@ -102,7 +102,7 @@ export const generateProjectFromDescription = async (
   request: ProjectGenerationRequest
 ): Promise<ProjectGenerationResponse> => {
   try {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
     
     // Crear la aplicación móvil primero
     const createResponse = await fetch(`${API_BASE_URL}/mobile-generator/from-prompt`, {
