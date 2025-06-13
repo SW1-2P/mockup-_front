@@ -9,6 +9,7 @@ import {
   CreateMobileAppRequest,
   CreateFromPromptRequest,
   CreateFromPromptResponse,
+  CreateAppResponse,
   ProjectType,
 } from "../types/api";
 
@@ -353,7 +354,128 @@ export const mobileAppsApi = {
     }
   },
 
-  // Create mobile app from prompt (NUEVO)
+  // APARTADO 1: Create mobile app from prompt with auto-enrichment (GENERAL)
+  createGeneralApp: async (request: CreateFromPromptRequest): Promise<CreateAppResponse> => {
+    try {
+      // Get current user from localStorage
+      const user = authApi.getCurrentUser();
+
+      if (!user || !user.id) {
+        throw new Error("User not authenticated or user ID not available");
+      }
+
+      // Preparar request data para GENERAL (con enriquecimiento automático)
+      const requestData = {
+        prompt: request.prompt,
+        nombre: request.nombre,
+        project_type: request.project_type || ProjectType.FLUTTER,
+        config: request.config,
+      };
+
+      // Log detallado para debugging
+      console.log('=== DEBUG createGeneralApp (APARTADO GENERAL) ===');
+      console.log('Request data:', requestData);
+      console.log('API URL:', `${API_URL}/mobile-generator/create-general-app`);
+      console.log('Token:', localStorage.getItem('token') ? 'EXISTS' : 'MISSING');
+      console.log('User:', user);
+
+      const response = await api.post<CreateAppResponse>(
+        "/mobile-generator/create-general-app",
+        requestData
+      );
+      
+      console.log('Response success (GENERAL):', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("=== ERROR createGeneralApp (APARTADO GENERAL) ===");
+      console.error('Error details:', error);
+      console.error('Response data:', error.response?.data);
+      console.error('Response status:', error.response?.status);
+      throw error;
+    }
+  },
+
+  // APARTADO 2: Create mobile app from detailed prompt (DETALLADO - sin enriquecimiento)
+  createDetailedApp: async (request: any): Promise<CreateAppResponse> => {
+    try {
+      // Get current user from localStorage
+      const user = authApi.getCurrentUser();
+
+      if (!user || !user.id) {
+        throw new Error("User not authenticated or user ID not available");
+      }
+
+      // Preparar request data para DETALLADO (SIN enriquecimiento automático)
+      const requestData = {
+        prompt: request.prompt,
+        nombre: request.nombre,
+        projectType: request.projectType || 'flutter',
+      };
+
+      // Log detallado para debugging
+      console.log('=== DEBUG createDetailedApp (APARTADO DETALLADO) ===');
+      console.log('Request data:', requestData);
+      console.log('API URL:', `${API_URL}/mobile-generator/create-detailed-app`);
+      console.log('Token:', localStorage.getItem('token') ? 'EXISTS' : 'MISSING');
+      console.log('User:', user);
+
+      const response = await api.post<CreateAppResponse>(
+        "/mobile-generator/create-detailed-app",
+        requestData
+      );
+      
+      console.log('Response success (DETALLADO):', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("=== ERROR createDetailedApp (APARTADO DETALLADO) ===");
+      console.error('Error details:', error);
+      console.error('Response data:', error.response?.data);
+      console.error('Response status:', error.response?.status);
+      throw error;
+    }
+  },
+
+  // APARTADO 3: Create mobile app from image analysis (DESDE IMAGEN)
+  createFromImageApp: async (request: any): Promise<CreateAppResponse> => {
+    try {
+      // Get current user from localStorage
+      const user = authApi.getCurrentUser();
+
+      if (!user || !user.id) {
+        throw new Error("User not authenticated or user ID not available");
+      }
+
+      // Preparar request data para DESDE IMAGEN
+      const requestData = {
+        image: request.image,
+        nombre: request.nombre,
+        projectType: request.projectType || 'flutter',
+      };
+
+      // Log detallado para debugging
+      console.log('=== DEBUG createFromImageApp (APARTADO DESDE IMAGEN) ===');
+      console.log('Request data (image length):', requestData.image?.length || 0);
+      console.log('API URL:', `${API_URL}/mobile-generator/create-from-image`);
+      console.log('Token:', localStorage.getItem('token') ? 'EXISTS' : 'MISSING');
+      console.log('User:', user);
+
+      const response = await api.post<CreateAppResponse>(
+        "/mobile-generator/create-from-image",
+        requestData
+      );
+      
+      console.log('Response success (DESDE IMAGEN):', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("=== ERROR createFromImageApp (APARTADO DESDE IMAGEN) ===");
+      console.error('Error details:', error);
+      console.error('Response data:', error.response?.data);
+      console.error('Response status:', error.response?.status);
+      throw error;
+    }
+  },
+
+  // Legacy: Create mobile app from prompt (MANTENER COMPATIBILIDAD)
   createFromPrompt: async (request: CreateFromPromptRequest): Promise<CreateFromPromptResponse> => {
     try {
       // Get current user from localStorage
@@ -372,7 +494,7 @@ export const mobileAppsApi = {
       };
 
       // Log detallado para debugging
-      console.log('=== DEBUG createFromPrompt ===');
+      console.log('=== DEBUG createFromPrompt (LEGACY) ===');
       console.log('Request data:', requestData);
       console.log('API URL:', `${API_URL}/mobile-generator/from-prompt`);
       console.log('Token:', localStorage.getItem('token') ? 'EXISTS' : 'MISSING');
@@ -386,7 +508,7 @@ export const mobileAppsApi = {
       console.log('Response success:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error("=== ERROR createFromPrompt ===");
+      console.error("=== ERROR createFromPrompt (LEGACY) ===");
       console.error("Error:", error);
       console.error("Error response data:", error.response?.data);
       console.error("Error status:", error.response?.status);
@@ -496,6 +618,19 @@ export const mobileAppsApi = {
       return await mobileAppsApi.generateProject(mobileApp.id);
     } catch (error) {
       console.error('Error generating Angular from XML:', error);
+      throw error;
+    }
+  },
+
+  // Download generated app project
+  downloadApp: async (id: string): Promise<Blob> => {
+    try {
+      const response = await api.post(`/mobile-generator/${id}/generate`, {}, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error downloading app project ${id}:`, error);
       throw error;
     }
   },

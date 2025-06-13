@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Smartphone, Globe, ArrowLeft, Loader, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Loader, Zap, Check, AlertCircle, Lightbulb, Smartphone } from 'lucide-react';
 import { mobileAppsApi } from '../services/apiService';
 import { CreateFromPromptRequest, ProjectType } from '../types/api';
 
@@ -9,6 +9,7 @@ export const MobileAppFromPromptPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [createdApp, setCreatedApp] = useState<any>(null);
   
   // Form state
   const [formData, setFormData] = useState<CreateFromPromptRequest>({
@@ -17,14 +18,58 @@ export const MobileAppFromPromptPage: React.FC = () => {
     project_type: ProjectType.FLUTTER,
   });
 
-  // Ejemplos de prompts sugeridos
-  const ejemplosPrompts = [
-    "crea una app móvil de gestión contable",
-    "crea una app de delivery de comida",
-    "crea una app de citas médicas",
-    "crea una app escolar para estudiantes",
-    "crea una app de gimnasio y fitness",
-    "crea una app de red social para mascotas"
+  // Ejemplos organizados por dominio
+  const dominiosEjemplos = [
+    {
+      categoria: "🎓 Educación",
+      color: "bg-green-50 border-green-200 text-green-800",
+      ejemplos: [
+        "una app educativa",
+        "aplicación escolar para estudiantes",
+        "app de gestión académica",
+        "plataforma educativa móvil"
+      ]
+    },
+    {
+      categoria: "💪 Fitness & Salud",
+      color: "bg-blue-50 border-blue-200 text-blue-800",
+      ejemplos: [
+        "una app de gimnasio",
+        "app de fitness y ejercicios",
+        "aplicación médica",
+        "app de citas médicas"
+      ]
+    },
+    {
+      categoria: "🍔 Delivery & Comercio",
+      color: "bg-orange-50 border-orange-200 text-orange-800",
+      ejemplos: [
+        "app de delivery de comida",
+        "tienda online móvil",
+        "aplicación de e-commerce",
+        "app de restaurantes"
+      ]
+    },
+    {
+      categoria: "💰 Finanzas",
+      color: "bg-purple-50 border-purple-200 text-purple-800",
+      ejemplos: [
+        "app de finanzas personales",
+        "aplicación contable",
+        "app de gestión de gastos",
+        "control de presupuesto"
+      ]
+    },
+    {
+      categoria: "👥 Social",
+      color: "bg-pink-50 border-pink-200 text-pink-800",
+      ejemplos: [
+        "red social simple",
+        "app de chat",
+        "aplicación de mensajería",
+        "red social para mascotas"
+      ]
+    }
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,8 +80,8 @@ export const MobileAppFromPromptPage: React.FC = () => {
       return;
     }
 
-    if (formData.prompt.length < 10) {
-      setError('La descripción debe tener al menos 10 caracteres');
+    if (formData.prompt.length < 5) {
+      setError('La descripción debe tener al menos 5 caracteres');
       return;
     }
 
@@ -44,40 +89,55 @@ export const MobileAppFromPromptPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Paso 1: Crear la app desde prompt
-      console.log('🔄 Paso 1: Creando app desde prompt...');
-      const app = await mobileAppsApi.createFromPrompt(formData);
-      console.log('✅ App creada:', app);
+      console.log('🚀 APARTADO GENERAL - Creando app automática desde prompt:', formData.prompt);
+      const result = await mobileAppsApi.createGeneralApp({
+        prompt: formData.prompt,
+        nombre: formData.nombre
+      });
+      console.log('✅ Resultado APARTADO GENERAL:', result);
       
-      // Paso 2: Generar automáticamente el proyecto y descargarlo
-      console.log('🔄 Paso 2: Generando proyecto automáticamente...');
-      const blob = await mobileAppsApi.generateProject(app.id);
-      
-      // Paso 3: Descargar el ZIP generado
-      console.log('✅ Descargando proyecto...');
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${app.nombre || 'mobile-app'}-${app.project_type}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      setSuccess(true);
-      
-      // Redirigir después de 3 segundos para mostrar el éxito
-      setTimeout(() => {
-        navigate('/', { 
-          state: { 
-            message: `¡App "${app.nombre}" creada y descargada exitosamente! El sistema agregó funcionalidades automáticamente.`,
-            appId: app.id
+      if (result.success && result.app) {
+        setCreatedApp(result.app);
+        setSuccess(true);
+        
+        // Auto-generar proyecto después de 2 segundos
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Generando proyecto automáticamente...');
+            const blob = await mobileAppsApi.generateProject(result.app.id);
+            
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${result.app.nombre || 'mobile-app'}-flutter.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            console.log('✅ Proyecto descargado exitosamente');
+            
+            // Redirigir después de la descarga
+            setTimeout(() => {
+              navigate('/mobile-apps', { 
+                state: { 
+                  message: `¡App "${result.app.nombre}" creada exitosamente! 🎉`,
+                  appId: result.app.id
+                }
+              });
+            }, 2000);
+            
+          } catch (genError) {
+            console.error('Error generando proyecto:', genError);
+            setError('Error generando el proyecto. Puedes intentar descargarlo desde "Mis Apps".');
           }
-        });
-      }, 3000);
+        }, 2000);
+      } else {
+        setError(result.error || 'Error en la respuesta del servidor');
+      }
       
     } catch (error: any) {
-      console.error('Error in mobile app creation flow:', error);
+      console.error('Error creando app:', error);
       setError(
         error.response?.status === 400 
           ? 'Verifica que la descripción sea válida'
@@ -90,188 +150,199 @@ export const MobileAppFromPromptPage: React.FC = () => {
     }
   };
 
-  const handleGoBack = () => {
-    navigate('/');
-  };
-
   const handleExampleClick = (ejemplo: string) => {
     setFormData({ ...formData, prompt: ejemplo });
   };
 
+  if (success && createdApp) {
+    const paginasDetectadas = createdApp.prompt?.split('\n')
+      .filter((line: string) => line.match(/^\d+\.\s*\w+Screen:/))
+      .length || 0;
 
-
-  if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl w-full text-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Check className="w-10 h-10 text-green-600" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">¡Aplicación creada y descargada!</h2>
-          <p className="text-gray-600 mb-4">El sistema agregó funcionalidades automáticamente y generó el proyecto completo.</p>
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="text-sm text-gray-500 mt-2">Redirigiendo...</p>
+          
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            ¡App Creada Exitosamente! 🎉
+          </h2>
+          
+          <div className="bg-gray-50 rounded-lg p-6 mb-6">
+            <h3 className="font-semibold text-gray-800 mb-2">Resumen de tu app:</h3>
+            <p className="text-lg font-medium text-blue-600 mb-2">"{createdApp.nombre}"</p>
+            <div className="text-sm text-gray-600 space-y-1">
+              <p><strong>Páginas generadas:</strong> {paginasDetectadas} páginas específicas + 4 base</p>
+              <p><strong>Dominio detectado:</strong> Automático con IA</p>
+              <p><strong>Tecnología:</strong> Flutter con Material Design 3</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-center space-x-2 mb-6">
+            <Loader className="animate-spin w-5 h-5 text-blue-600" />
+            <span className="text-gray-700">Generando y descargando proyecto...</span>
+          </div>
+          
+          <p className="text-gray-600 text-sm mb-4">
+            El sistema detectó automáticamente el dominio y generó páginas específicas. 
+            El proyecto se descargará automáticamente en unos segundos.
+          </p>
+          
+          <div className="text-xs text-gray-500">
+            Redirigiendo a "Mis Apps" después de la descarga...
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
       {/* Header */}
-      <header className="bg-white shadow-sm p-4 flex items-center gap-4">
-        <button
-          onClick={handleGoBack}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
-        >
-          <ArrowLeft size={20} />
-          <span>Volver</span>
-        </button>
-        <h1 className="text-xl font-semibold text-gray-800">Crear App con IA</h1>
-      </header>
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <button
+              onClick={() => navigate('/mobile-apps-main')}
+              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Volver
+            </button>
+            <h1 className="text-xl font-bold text-gray-900 flex items-center">
+              <Zap className="w-6 h-6 mr-2 text-green-600" />
+              Creación GENERAL - Automática
+            </h1>
+            <div className="w-16"></div>
+          </div>
+        </div>
+      </div>
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto p-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">🤖 Crear aplicación con IA</h2>
-            <p className="text-gray-600">
-              Describe qué tipo de aplicación quieres crear. El sistema agregará funcionalidades automáticamente.
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          {/* Hero */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+              <Smartphone className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Crea tu App con IA Automática
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Describe tu idea en pocas palabras y nuestra IA detectará automáticamente el dominio, 
+              generará páginas específicas y creará una app completa.
             </p>
           </div>
 
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
+          {/* Features */}
+          <div className="grid md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-green-50 p-4 rounded-lg text-center">
+              <div className="text-2xl font-bold text-green-600 mb-1">7+</div>
+              <div className="text-sm text-green-700">Dominios Soportados</div>
             </div>
-          )}
-
-          {/* Ejemplos de prompts */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Lightbulb className="w-5 h-5 text-yellow-500" />
-              <h3 className="font-medium text-gray-800">Ejemplos de descripciones:</h3>
+            <div className="bg-blue-50 p-4 rounded-lg text-center">
+              <div className="text-2xl font-bold text-blue-600 mb-1">8-9</div>
+              <div className="text-sm text-blue-700">Páginas Generadas</div>
             </div>
-            <div className="grid gap-2">
-              {ejemplosPrompts.map((ejemplo, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleExampleClick(ejemplo)}
-                  className="text-left p-2 bg-gray-50 hover:bg-gray-100 rounded border text-sm text-gray-700 transition-colors"
-                >
-                  "{ejemplo}"
-                </button>
-              ))}
+            <div className="bg-purple-50 p-4 rounded-lg text-center">
+              <div className="text-2xl font-bold text-purple-600 mb-1">100%</div>
+              <div className="text-sm text-purple-700">Flutter Completo</div>
             </div>
           </div>
 
-          {/* Formulario */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start">
+              <AlertCircle className="w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
+              <div className="text-red-700">{error}</div>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-8">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descripción de tu aplicación *
+              <label className="block text-lg font-semibold text-gray-900 mb-4">
+                🎯 Describe tu app en pocas palabras
               </label>
               <textarea
                 value={formData.prompt}
                 onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
-                placeholder="Ejemplo: crea una app móvil de gestión contable con login, formularios de transacciones y reportes"
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Ejemplo: una app educativa"
+                rows={3}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg"
                 required
-                minLength={10}
+                minLength={5}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Mínimo 10 caracteres. Describe qué quieres que haga tu aplicación.
+              <p className="text-sm text-gray-500 mt-2">
+                La IA detectará automáticamente el dominio y generará páginas específicas.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre de la aplicación
+              <label className="block text-lg font-semibold text-gray-900 mb-4">
+                📱 Nombre de la app (opcional)
               </label>
               <input
                 type="text"
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                placeholder="Mi App Contable (opcional - se genera automáticamente)"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Se genera automáticamente si se deja vacío"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 maxLength={50}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Opcional. Si no lo proporcionas, se generará automáticamente.
-              </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de proyecto
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, project_type: ProjectType.FLUTTER })}
-                  className={`p-3 border rounded-md flex items-center gap-3 transition-colors ${
-                    formData.project_type === ProjectType.FLUTTER
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  <Smartphone className="w-5 h-5 text-blue-500" />
-                  <div className="text-left">
-                    <div className="font-medium">Flutter</div>
-                    <div className="text-xs text-gray-500">Aplicación móvil</div>
-                  </div>
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, project_type: ProjectType.ANGULAR })}
-                  className={`p-3 border rounded-md flex items-center gap-3 transition-colors ${
-                    formData.project_type === ProjectType.ANGULAR
-                      ? 'border-red-500 bg-red-50 text-red-700'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  <Globe className="w-5 h-5 text-red-500" />
-                  <div className="text-left">
-                    <div className="font-medium">Angular</div>
-                    <div className="text-xs text-gray-500">Aplicación web</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <button
-                type="submit"
-                disabled={loading || !formData.prompt.trim()}
-                className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
-              >
-                {loading ? (
-                  <>
-                    <Loader className="w-4 h-4 animate-spin" />
-                    Creando y generando app...
-                  </>
-                ) : (
-                  <>
-                    🤖 Crear y Descargar App
-                  </>
-                )}
-              </button>
-              
-              <button
-                type="button"
-                onClick={handleGoBack}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading || !formData.prompt.trim()}
+              className="w-full bg-green-600 text-white font-semibold py-4 px-6 rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center text-lg"
+            >
+              {loading ? (
+                <>
+                  <Loader className="animate-spin w-6 h-6 mr-3" />
+                  Creando app con IA...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-6 h-6 mr-3" />
+                  Crear App Automática
+                </>
+              )}
+            </button>
           </form>
+
+          {/* Examples */}
+          <div className="mt-12">
+            <div className="flex items-center mb-6">
+              <Lightbulb className="w-6 h-6 text-yellow-500 mr-2" />
+              <h3 className="text-xl font-semibold text-gray-900">
+                Ejemplos por Dominio
+              </h3>
+            </div>
+            
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {dominiosEjemplos.map((dominio, index) => (
+                <div key={index} className={`border-2 rounded-lg p-4 ${dominio.color}`}>
+                  <h4 className="font-semibold mb-3">{dominio.categoria}</h4>
+                  <div className="space-y-2">
+                    {dominio.ejemplos.map((ejemplo, exIndex) => (
+                      <button
+                        key={exIndex}
+                        onClick={() => handleExampleClick(ejemplo)}
+                        className="block w-full text-left p-2 bg-white/70 hover:bg-white/90 rounded text-sm transition-colors"
+                      >
+                        "{ejemplo}"
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }; 
