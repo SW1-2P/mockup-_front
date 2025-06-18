@@ -14,6 +14,15 @@ interface FormData {
   imageFile: File | null;
 }
 
+// Agregar enum para estados de generación más específicos
+enum GenerationState {
+  IDLE = 'idle',
+  CREATING_APP = 'creating_app',
+  GENERATING_PROJECT = 'generating_project',
+  DOWNLOADING = 'downloading',
+  COMPLETED = 'completed'
+}
+
 const MobileAppFromImagePage: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
@@ -23,7 +32,7 @@ const MobileAppFromImagePage: React.FC = () => {
   });
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationState, setGenerationState] = useState<GenerationState>(GenerationState.IDLE);
   const [analysisResult, setAnalysisResult] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
@@ -120,7 +129,7 @@ const MobileAppFromImagePage: React.FC = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setGenerationState(GenerationState.CREATING_APP);
     setError('');
     setSuccess('');
 
@@ -136,10 +145,12 @@ const MobileAppFromImagePage: React.FC = () => {
 
       if (result.success && result.app) {
         setSuccess(`¡App "${result.app.nombre}" creada desde imagen! Generando proyecto...`);
+        setGenerationState(GenerationState.GENERATING_PROJECT);
         
         // Auto-generar el proyecto
         setTimeout(async () => {
           try {
+            setGenerationState(GenerationState.DOWNLOADING);
             const blob = await mobileAppsApi.generateProject(result.app.id);
             
             // Descargar archivo automáticamente
@@ -154,37 +165,61 @@ const MobileAppFromImagePage: React.FC = () => {
             // Limpiar URL del blob
             URL.revokeObjectURL(url);
             
+            setGenerationState(GenerationState.COMPLETED);
             setSuccess(`¡Proyecto ${formData.projectType} generado y descargado correctamente!`);
             
-            // Limpiar formulario
-            setFormData({
-              projectName: '',
-              projectType: 'flutter',
-              imageFile: null
-            });
-            setImagePreview('');
-            setImageInfo(null);
-            setAnalysisResult('');
-            if (fileInputRef.current) {
-              fileInputRef.current.value = '';
-            }
+            // Limpiar formulario después de un momento
+            setTimeout(() => {
+              setFormData({
+                projectName: '',
+                projectType: 'flutter',
+                imageFile: null
+              });
+              setImagePreview('');
+              setImageInfo(null);
+              setAnalysisResult('');
+              setGenerationState(GenerationState.IDLE);
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+              }
+            }, 3000);
             
           } catch (genError) {
             console.error('Error generando proyecto:', genError);
             setError('Error generando el proyecto. Puedes intentar descargarlo desde "Mis Apps".');
+            setGenerationState(GenerationState.IDLE);
           }
         }, 2000);
         
       } else {
         setError(result.error || 'Error creando app desde imagen');
+        setGenerationState(GenerationState.IDLE);
       }
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error generando proyecto');
-    } finally {
-      setIsGenerating(false);
+      setGenerationState(GenerationState.IDLE);
     }
   };
+
+  // Función helper para obtener el texto del botón según el estado
+  const getGenerationButtonText = () => {
+    switch (generationState) {
+      case GenerationState.CREATING_APP:
+        return 'Creando aplicación...';
+      case GenerationState.GENERATING_PROJECT:
+        return 'Generando código...';
+      case GenerationState.DOWNLOADING:
+        return 'Preparando descarga...';
+      case GenerationState.COMPLETED:
+        return '¡Completado!';
+      default:
+        return 'Generar y Descargar';
+    }
+  };
+
+  // Comprobar si está en proceso de generación
+  const isGenerating = generationState !== GenerationState.IDLE;
 
   const clearImage = () => {
     setFormData(prev => ({
@@ -203,6 +238,64 @@ const MobileAppFromImagePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+      {/* Loading Overlay */}
+      {isGenerating && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center shadow-2xl">
+            <div className="mb-6">
+              <div className="relative w-20 h-20 mx-auto mb-4">
+                <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+                <div className="absolute inset-4 flex items-center justify-center">
+                  <Image className="w-8 h-8 text-blue-600" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {getGenerationButtonText()}
+              </h3>
+              <div className="text-gray-600 space-y-1">
+                {generationState === GenerationState.CREATING_APP && (
+                  <p>Analizando imagen y creando estructura...</p>
+                )}
+                {generationState === GenerationState.GENERATING_PROJECT && (
+                  <p>Generando código fuente con IA...</p>
+                )}
+                {generationState === GenerationState.DOWNLOADING && (
+                  <p>Empaquetando archivos para descarga...</p>
+                )}
+                {generationState === GenerationState.COMPLETED && (
+                  <p>¡Tu proyecto está listo! Descarga iniciada.</p>
+                )}
+              </div>
+            </div>
+            
+            {/* Progress Steps */}
+            <div className="flex justify-center space-x-4 mb-6">
+              <div className={`w-3 h-3 rounded-full transition-colors ${
+                [GenerationState.CREATING_APP, GenerationState.GENERATING_PROJECT, GenerationState.DOWNLOADING, GenerationState.COMPLETED].includes(generationState)
+                  ? 'bg-blue-600' : 'bg-gray-300'
+              }`}></div>
+              <div className={`w-3 h-3 rounded-full transition-colors ${
+                [GenerationState.GENERATING_PROJECT, GenerationState.DOWNLOADING, GenerationState.COMPLETED].includes(generationState)
+                  ? 'bg-blue-600' : 'bg-gray-300'
+              }`}></div>
+              <div className={`w-3 h-3 rounded-full transition-colors ${
+                [GenerationState.DOWNLOADING, GenerationState.COMPLETED].includes(generationState)
+                  ? 'bg-blue-600' : 'bg-gray-300'
+              }`}></div>
+              <div className={`w-3 h-3 rounded-full transition-colors ${
+                generationState === GenerationState.COMPLETED ? 'bg-green-600' : 'bg-gray-300'
+              }`}></div>
+            </div>
+            
+            <p className="text-sm text-gray-500">
+              Este proceso puede tomar unos minutos.<br />
+              No cierres esta ventana.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -210,6 +303,7 @@ const MobileAppFromImagePage: React.FC = () => {
             <button
               onClick={() => navigate('/mobile-apps-main')}
               className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+              disabled={isGenerating}
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
               Volver
@@ -273,6 +367,7 @@ const MobileAppFromImagePage: React.FC = () => {
                 placeholder="Mi App Increíble"
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
                 required
+                disabled={isGenerating}
               />
             </div>
 
@@ -285,11 +380,12 @@ const MobileAppFromImagePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, projectType: 'flutter' }))}
+                  disabled={isGenerating}
                   className={`p-4 border-2 rounded-xl transition-all ${
                     formData.projectType === 'flutter'
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  } ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className="text-center">
                     <div className="text-xl mb-2">📱</div>
@@ -301,11 +397,12 @@ const MobileAppFromImagePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, projectType: 'angular' }))}
+                  disabled={isGenerating}
                   className={`p-4 border-2 rounded-xl transition-all ${
                     formData.projectType === 'angular'
                       ? 'border-red-500 bg-red-50 text-red-700'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  } ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className="text-center">
                     <div className="text-xl mb-2">🌐</div>
@@ -329,6 +426,7 @@ const MobileAppFromImagePage: React.FC = () => {
                   accept="image/*"
                   onChange={handleImageChange}
                   className="hidden"
+                  disabled={isGenerating}
                 />
                 
                 {!imagePreview ? (
@@ -344,7 +442,7 @@ const MobileAppFromImagePage: React.FC = () => {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                      disabled={isCompressing}
+                      disabled={isCompressing || isGenerating}
                     >
                       {isCompressing ? (
                         <>
@@ -373,6 +471,7 @@ const MobileAppFromImagePage: React.FC = () => {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                        disabled={isGenerating}
                       >
                         Cambiar
                       </button>
@@ -380,6 +479,7 @@ const MobileAppFromImagePage: React.FC = () => {
                         type="button"
                         onClick={clearImage}
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
+                        disabled={isGenerating}
                       >
                         Eliminar
                       </button>
@@ -393,7 +493,7 @@ const MobileAppFromImagePage: React.FC = () => {
             <div className="space-y-4">
               <button
                 onClick={handleAnalyzeImage}
-                disabled={!formData.imageFile || isAnalyzing}
+                disabled={!formData.imageFile || isAnalyzing || isGenerating}
                 className="w-full bg-blue-600 text-white font-semibold py-4 px-6 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
               >
                 {isAnalyzing ? (
@@ -417,12 +517,12 @@ const MobileAppFromImagePage: React.FC = () => {
                 {isGenerating ? (
                   <>
                     <Loader className="animate-spin w-5 h-5 mr-3" />
-                    Generando proyecto...
+                    {getGenerationButtonText()}
                   </>
                 ) : (
                   <>
                     <Download className="w-5 h-5 mr-3" />
-                    Generar y Descargar
+                    {getGenerationButtonText()}
                   </>
                 )}
               </button>
